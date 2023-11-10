@@ -1,4 +1,4 @@
            function              OpenMP        OpenCL total      OpenCL copy-in       OpenCL kernel     OpenCL copy-out    OpenMP bandwidth    OpenCL bandwidth
-vector-times-vector              7498us            510146us            470315us                 9us             39821us         50.3451GB/s           41943GB/s
-matrix-times-vector             35042us            862889us            802866us                 5us             60017us         35.9151GB/s          251707GB/s
-matrix-times-matrix            325773us             44635us             27199us             12752us              4684us        0.115874GB/s         2.96022GB/s
+vector-times-vector              7894us            475725us            441603us                 6us             34115us         47.8195GB/s         62914.6GB/s
+matrix-times-vector             25992us           2061215us           2009469us                 5us             51741us         48.4202GB/s          251707GB/s
+matrix-times-matrix            267797us            108246us             26994us                11us             81239us         0.14096GB/s          3431.7GB/s

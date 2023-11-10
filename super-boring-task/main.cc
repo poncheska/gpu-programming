@@ -140,26 +140,15 @@ void profile_matrix_times_matrix(int n, OpenCL &opencl) {
   auto t1 = clock_type::now();
   cl::Buffer d_a(opencl.queue, begin(a), end(a), true);
   cl::Buffer d_b(opencl.queue, begin(b), end(b), true);
-  cl::Buffer d_result(opencl.context, CL_MEM_WRITE_ONLY,
-                      result.size() * sizeof(float));
-  int local_size = sqrt(opencl.device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
-
-  while ((n * n) % (local_size * local_size) != 0) {
-    local_size--;
-  }
-
+  cl::Buffer d_result(opencl.context, CL_MEM_READ_WRITE, result.size() * sizeof(float));
   kernel.setArg(0, d_a);
   kernel.setArg(1, d_b);
   kernel.setArg(2, d_result);
-  kernel.setArg(3, n);
-  kernel.setArg(4, local_size * local_size * sizeof(float), NULL);
-  kernel.setArg(5, local_size * local_size * sizeof(float), NULL);
-  opencl.queue.finish();
+  opencl.queue.flush();
 
   auto t2 = clock_type::now();
-  opencl.queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(n, n),
-                                    cl::NDRange(local_size, local_size));
-  opencl.queue.finish();
+  opencl.queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(n, n), cl::NDRange(256));
+  opencl.queue.flush();
 
   auto t3 = clock_type::now();
   cl::copy(opencl.queue, d_result, begin(result), end(result));
@@ -199,42 +188,28 @@ kernel void matrix_times_vector(global const float* a,
     result[i] = sum;
 }
 
-kernel void matrix_times_matrix(global float* a,
-                                global float* b,
-                                global float* result, 
-                                int n,
-                                local float* loc_block_A,
-                                local float* loc_block_B) {
-    int local_size = get_local_size(0);
+kernel void matrix_times_matrix(global float *a, global float *b,
+                                global float *result) {
+  int tx = get_global_id(0);
+  int ty = get_global_id(1);
+  int wA = get_global_size(0);
 
-    int group_id_0 = get_group_id(0);
-    int group_id_1 = get_group_id(1);
+  int localSize = get_local_size(0);
+  int localId = get_local_id(0);
 
-    int local_id_0 = get_local_id(0);
-    int local_id_1 = get_local_id(1);
+  local float rowBuff[1024];
 
-    int a_start = n * local_size * group_id_1;
-    int a_end   = a_start + n - 1;
-    int a_step  = local_size;
+  for (int i = localId; i < wA; i += localSize) {
+    rowBuff[i] = a[ty * wA + i];
+  }
 
-    int b_start = local_size * group_id_0;
-    int b_step  = local_size * n;
-
-    float resultSub = 0.0f;
-
-    for (int i = a_start, j = b_start; i <= a_end; i += a_step, j += b_step) {
-        loc_block_A[local_id_0 + local_id_1*local_size] = a[i + n*local_id_1 + local_id_0];
-        loc_block_B[local_id_0 + local_id_1*local_size] = b[j + n*local_id_1 + local_id_0];
-
-        barrier(CLK_LOCAL_MEM_FENCE);
-
-        for (int k = 0; k < local_size; ++k) {
-            resultSub += loc_block_A[k + local_id_1*local_size] * loc_block_B[local_id_0 + k*local_size];
-        }
-        barrier(CLK_LOCAL_MEM_FENCE);
-    }
-
-    result[get_global_id(1) * get_global_size(0) + get_global_id(0)] = resultSub;
+  barrier(CLK_LOCAL_MEM_FENCE);
+  float value = 0;
+  for (int k = 0; k < wA; ++k) {
+    float elementB = b[k * wA + tx];
+    value += rowBuff[k] * elementB;
+  }
+  result[ty * wA + tx] = value;
 }
 
 )";
