@@ -1,0 +1,3 @@
+           function              OpenMP        OpenCL total      OpenCL copy-in       OpenCL kernel     OpenCL copy-out    OpenMP bandwidth    OpenCL bandwidth
+             reduce              2701us            497698us            495192us                24us              2480us         93.1722GB/s         10485.8GB/s
+     scan-inclusive              9312us            892653us             58306us               131us            834215us               0GB/s               0GB/s
