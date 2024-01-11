@@ -1,0 +1,2 @@
+           function              OpenMP        OpenCL total      OpenCL copy-in       OpenCL kernel     OpenCL copy-out
+             filter              4883us            101327us             99054us                29us              2243us
